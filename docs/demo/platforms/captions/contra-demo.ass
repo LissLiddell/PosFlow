@@ -1,0 +1,30 @@
+[Script Info]
+Title: PosFlow - Complete demo captions
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Title,Arial,48,&H00FFFFFF,&H000000FF,&H680A1020,&H680A1020,-1,0,0,0,100,100,0,0,3,14,0,2,90,90,60,1
+Style: Caption,Arial,40,&H00FFFFFF,&H000000FF,&H680A1020,&H680A1020,-1,0,0,0,100,100,0,0,3,12,0,2,90,90,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:06.00,Title,,0,0,0,,PosFlow | Cash operations that stay balanced
+Dialogue: 0,0:00:06.00,0:00:18.00,Caption,,0,0,0,,Role-based access separates cashier, supervisor,\Nadministrator and finance duties.
+Dialogue: 0,0:00:18.00,0:00:23.00,Caption,,0,0,0,,The cashier opens a till with a declared starting balance.
+Dialogue: 0,0:00:23.00,0:00:41.00,Caption,,0,0,0,,A fast POS records products, cash payments\Nand the live expected drawer balance.
+Dialogue: 0,0:00:41.00,0:01:07.00,Caption,,0,0,0,,Remittances track money sent and received\Nwithout mixing it with drawer cash.
+Dialogue: 0,0:01:07.00,0:01:17.00,Caption,,0,0,0,,Authorized employee advances are issued\Nfrom the correct branch and till.
+Dialogue: 0,0:01:17.00,0:01:28.00,Caption,,0,0,0,,Finance gets a consolidated view of cash, custody,\Nremittances and outstanding advances.
+Dialogue: 0,0:01:28.00,0:01:44.00,Caption,,0,0,0,,Finance authorizes advances and records\Nreceipts, returns and supporting evidence.
+Dialogue: 0,0:01:44.00,0:01:54.00,Caption,,0,0,0,,Every movement remains traceable by user and role.
+Dialogue: 0,0:01:54.00,0:02:09.00,Caption,,0,0,0,,Supervisors prepare, fill and seal cash bundles\Nbefore moving them into custody.
+Dialogue: 0,0:02:09.00,0:02:16.00,Caption,,0,0,0,,Roles can switch while each permission remains enforced.
+Dialogue: 0,0:02:16.00,0:02:35.00,Caption,,0,0,0,,A blind cash count compares expected and actual cash\Nwithout revealing the target beforehand.
+Dialogue: 0,0:02:35.00,0:02:43.00,Caption,,0,0,0,,Closing differences are routed for supervisor review.
+Dialogue: 0,0:02:43.00,0:02:49.40,Caption,,0,0,0,,The exception closes with an explanation\Nand a complete audit trail.

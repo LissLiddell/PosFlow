@@ -1,0 +1,15 @@
+node_modules
+.npm-cache
+.tmp
+dist
+.env
+.env.local
+coverage
+playwright-report
+test-results
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Local portfolio video exports (upload directly to freelance platforms)
+docs/demo/**/*.mp4

@@ -1,0 +1,34 @@
+{
+  "name": "posflow",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "npm run dev -w @posflow/api",
+    "dev:web": "npm run dev -w @posflow/web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present && npm run typecheck:e2e",
+    "typecheck:e2e": "tsc -p e2e/tsconfig.json --noEmit",
+    "test": "npm run test --workspaces --if-present",
+    "test:e2e": "node scripts/e2e.mjs",
+    "test:e2e:install": "node scripts/install-e2e-browser.mjs",
+    "test:all": "npm test && npm run test:e2e",
+    "capture:portfolio": "node scripts/capture-portfolio.mjs",
+    "demo:portfolio": "node scripts/capture-portfolio.mjs --record",
+    "db:generate": "npm run db:generate -w @posflow/api",
+    "db:migrate": "npm run db:migrate -w @posflow/api --",
+    "db:deploy": "npm run db:deploy -w @posflow/api",
+    "db:seed": "npm run db:seed -w @posflow/api",
+    "db:seed:stage2": "npm run db:seed:stage2 -w @posflow/api",
+    "db:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-database.ps1"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

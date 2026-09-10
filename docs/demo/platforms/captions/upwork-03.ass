@@ -1,0 +1,22 @@
+[Script Info]
+Title: PosFlow - Cash control captions
+ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+YCbCr Matrix: TV.709
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Caption,Arial,40,&H00FFFFFF,&H000000FF,&H680A1020,&H680A1020,-1,0,0,0,100,100,0,0,3,12,0,2,90,90,60,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:07.00,Caption,,0,0,0,,PosFlow | Supervisor cash control
+Dialogue: 0,0:00:07.00,0:00:21.00,Caption,,0,0,0,,Prepare and seal cash bundles\Nbefore moving them into custody.
+Dialogue: 0,0:00:21.00,0:00:28.00,Caption,,0,0,0,,Permissions separate preparation,\Ncashier closing and supervisor review.
+Dialogue: 0,0:00:28.00,0:00:44.00,Caption,,0,0,0,,A blind count compares physical cash\Nagainst the expected drawer balance.
+Dialogue: 0,0:00:44.00,0:00:51.00,Caption,,0,0,0,,Differences are routed for review\Ninstead of silently closing the till.
+Dialogue: 0,0:00:51.00,0:00:58.00,Caption,,0,0,0,,The supervisor explains and resolves\Nthe operational exception.
+Dialogue: 0,0:00:58.00,0:01:01.50,Caption,,0,0,0,,The final report preserves a complete audit trail.

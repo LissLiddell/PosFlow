@@ -1,0 +1,505 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FINANCE
+  SUPERVISOR
+  CASHIER
+}
+
+enum ShiftStatus {
+  OPEN
+  PENDING_REVIEW
+  CLOSED
+}
+
+enum SaleStatus {
+  COMPLETED
+  REFUNDED
+  VOIDED
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+}
+
+enum LedgerEntryType {
+  OPENING_FLOAT
+  CASH_SALE
+  CASH_REFUND
+  CASH_IN
+  CASH_OUT
+  ADVANCE_ISSUED
+  ADVANCE_RETURNED
+  REMITTANCE_SEND
+  REMITTANCE_PAYOUT
+  CASH_BUNDLE_SEALED
+  CASH_BUNDLE_CANCELLED
+}
+
+enum CashBundleStatus {
+  DRAFT
+  SEALED
+  IN_SAFE_CUSTODY
+  TRANSFERRED
+  CANCELLED
+}
+
+enum CashCountType {
+  CLOSING
+}
+
+enum RemittanceStatus {
+  AVAILABLE
+  PAID
+  CANCELLED
+  FAILED
+}
+
+enum FundingEntryType {
+  REMITTANCE_SEND
+  REMITTANCE_PAYOUT
+  ADJUSTMENT
+}
+
+enum AdvanceStatus {
+  AUTHORIZED
+  OPEN
+  PARTIALLY_SETTLED
+  SETTLED
+  CANCELLED
+}
+
+enum AdvanceRecipientType {
+  EMPLOYEE
+  VENDOR
+}
+
+enum AdvanceSettlementType {
+  EXPENSE_PROOF
+  CASH_RETURN
+}
+
+model Business {
+  id            String        @id @default(uuid())
+  name          String
+  slug          String        @unique
+  createdAt     DateTime      @default(now())
+  stores        Store[]
+  users         User[]
+  categories    Category[]
+  products      Product[]
+  sales         Sale[]
+  ledgerEntries LedgerEntry[]
+  cashBundles   CashBundle[]
+  cashCounts    CashCount[]
+  remittances   Remittance[]
+  fundingEntries FundingEntry[]
+  advances      Advance[]
+  advanceSettlements AdvanceSettlement[]
+  auditEvents   AuditEvent[]
+}
+
+model Store {
+  id        String       @id @default(uuid())
+  businessId String
+  name      String
+  code      String
+  city      String?
+  createdAt DateTime     @default(now())
+  business  Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  registers Register[]
+  users     User[]
+  sentRemittances Remittance[] @relation("RemittanceOrigin")
+  receivedRemittances Remittance[] @relation("RemittanceDestination")
+  fundingEntries FundingEntry[]
+  advances  Advance[]
+  auditEvents AuditEvent[]
+
+  @@unique([businessId, code])
+  @@index([businessId])
+}
+
+model Register {
+  id              String   @id @default(uuid())
+  storeId         String
+  name            String
+  code            String
+  receiptSequence Int      @default(0)
+  cashLimitCents  Int      @default(500000)
+  closingToleranceCents Int @default(100)
+  supervisorCanManageBundles Boolean @default(true)
+  supervisorCanApproveClosures Boolean @default(true)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  store           Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  shifts          Shift[]
+
+  @@unique([storeId, code])
+  @@index([storeId])
+}
+
+model User {
+  id                    String        @id @default(uuid())
+  businessId            String
+  storeId               String?
+  name                  String
+  email                 String        @unique
+  passwordHash          String
+  role                  Role
+  active                Boolean       @default(true)
+  createdAt             DateTime      @default(now())
+  business              Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  store                 Store?        @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  cashierShifts         Shift[]       @relation("CashierShifts")
+  closedShifts          Shift[]       @relation("ClosedBy")
+  approvedClosures      Shift[]       @relation("CloseApprovedBy")
+  sales                 Sale[]
+  ledgerEntries         LedgerEntry[]
+  preparedCashBundles   CashBundle[]  @relation("BundlePreparedBy")
+  verifiedCashBundles   CashBundle[]  @relation("BundleVerifiedBy")
+  cashCounts            CashCount[]
+  sentRemittances       Remittance[]  @relation("RemittanceSentBy")
+  paidRemittances       Remittance[]  @relation("RemittancePaidBy")
+  fundingEntries        FundingEntry[]
+  createdAdvances       Advance[]     @relation("AdvanceCreatedBy")
+  authorizedAdvances    Advance[]     @relation("AdvanceAuthorizedBy")
+  issuedAdvances        Advance[]     @relation("AdvanceIssuedBy")
+  advanceSettlements    AdvanceSettlement[]
+  auditEvents           AuditEvent[]
+
+  @@index([businessId, role])
+  @@index([storeId])
+}
+
+model Category {
+  id         String    @id @default(uuid())
+  businessId String
+  name       String
+  color      String?
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  products   Product[]
+
+  @@unique([businessId, name])
+}
+
+model Product {
+  id            String    @id @default(uuid())
+  businessId    String
+  categoryId    String
+  sku           String
+  barcode       String?
+  name          String
+  priceCents    Int
+  stockQuantity Int       @default(0)
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category      Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  saleItems     SaleItem[]
+
+  @@unique([businessId, sku])
+  @@index([businessId, active])
+  @@index([categoryId])
+}
+
+model Shift {
+  id                String       @id @default(uuid())
+  registerId        String
+  cashierId         String
+  status            ShiftStatus  @default(OPEN)
+  openingFloatCents Int
+  expectedCashCents Int?
+  countedCashCents  Int?
+  discrepancyCents  Int?
+  openedAt          DateTime     @default(now())
+  closeRequestedAt  DateTime?
+  closedAt          DateTime?
+  closedById        String?
+  closeApprovedById String?
+  register          Register     @relation(fields: [registerId], references: [id], onDelete: Restrict)
+  cashier           User         @relation("CashierShifts", fields: [cashierId], references: [id], onDelete: Restrict)
+  closedBy          User?        @relation("ClosedBy", fields: [closedById], references: [id], onDelete: SetNull)
+  closeApprovedBy   User?        @relation("CloseApprovedBy", fields: [closeApprovedById], references: [id], onDelete: SetNull)
+  sales             Sale[]
+  ledgerEntries     LedgerEntry[]
+  cashBundles       CashBundle[]
+  cashCounts        CashCount[]
+  sentRemittances   Remittance[] @relation("RemittanceSentShift")
+  paidRemittances   Remittance[] @relation("RemittancePaidShift")
+  issuedAdvances    Advance[] @relation("AdvanceIssuedShift")
+  advanceSettlements AdvanceSettlement[]
+
+  @@index([registerId, status])
+  @@index([cashierId, status])
+}
+
+model Sale {
+  id            String       @id @default(uuid())
+  businessId    String
+  shiftId       String
+  cashierId     String
+  receiptNumber String
+  status        SaleStatus   @default(COMPLETED)
+  subtotalCents Int
+  totalCents    Int
+  createdAt     DateTime     @default(now())
+  business      Business     @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  shift         Shift        @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  cashier       User         @relation(fields: [cashierId], references: [id], onDelete: Restrict)
+  items         SaleItem[]
+  payments      Payment[]
+
+  @@unique([businessId, receiptNumber])
+  @@index([shiftId, createdAt])
+}
+
+model SaleItem {
+  id                  String   @id @default(uuid())
+  saleId              String
+  productId           String
+  productNameSnapshot String
+  skuSnapshot         String
+  quantity            Int
+  unitPriceCents      Int
+  totalCents          Int
+  sale                Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product             Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([saleId])
+  @@index([productId])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  saleId      String
+  method      PaymentMethod
+  amountCents Int
+  createdAt   DateTime      @default(now())
+  sale        Sale          @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  @@index([saleId])
+}
+
+model LedgerEntry {
+  id          String          @id @default(uuid())
+  businessId  String
+  shiftId     String
+  type        LedgerEntryType
+  amountCents Int
+  description String
+  sourceType  String
+  sourceId    String
+  createdById String
+  createdAt   DateTime        @default(now())
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  shift       Shift           @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([shiftId, createdAt])
+  @@index([businessId, type])
+  @@index([sourceType, sourceId])
+}
+
+model CashBundle {
+  id           String           @id @default(uuid())
+  businessId   String
+  shiftId      String
+  reference    String
+  status       CashBundleStatus @default(DRAFT)
+  totalCents   Int
+  preparedById String
+  verifiedById String?
+  sealedAt     DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  business     Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  shift        Shift            @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  preparedBy   User             @relation("BundlePreparedBy", fields: [preparedById], references: [id], onDelete: Restrict)
+  verifiedBy   User?            @relation("BundleVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  lines        CashBundleLine[]
+
+  @@unique([businessId, reference])
+  @@index([shiftId, status])
+}
+
+model CashBundleLine {
+  id                String     @id @default(uuid())
+  cashBundleId      String
+  denominationCents Int
+  quantity          Int
+  subtotalCents     Int
+  cashBundle        CashBundle @relation(fields: [cashBundleId], references: [id], onDelete: Cascade)
+
+  @@unique([cashBundleId, denominationCents])
+}
+
+model CashCount {
+  id          String        @id @default(uuid())
+  businessId  String
+  shiftId     String
+  type        CashCountType
+  totalCents  Int
+  countedById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  business    Business      @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  shift       Shift         @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  countedBy   User          @relation(fields: [countedById], references: [id], onDelete: Restrict)
+  lines       CashCountLine[]
+
+  @@unique([shiftId, type])
+}
+
+model CashCountLine {
+  id                String    @id @default(uuid())
+  cashCountId       String
+  denominationCents Int
+  quantity          Int
+  subtotalCents     Int
+  cashCount         CashCount @relation(fields: [cashCountId], references: [id], onDelete: Cascade)
+
+  @@unique([cashCountId, denominationCents])
+}
+
+model Remittance {
+  id                      String           @id @default(uuid())
+  businessId              String
+  reference               String
+  status                  RemittanceStatus @default(AVAILABLE)
+  originStoreId           String
+  destinationStoreId      String
+  senderName              String
+  senderPhone             String?
+  beneficiaryName         String
+  beneficiaryDocumentCode String
+  amountCents             Int
+  feeCents                Int
+  totalCollectedCents     Int
+  sentShiftId             String?
+  sentById                String?
+  paidShiftId             String?
+  paidById                String?
+  availableAt             DateTime         @default(now())
+  paidAt                  DateTime?
+  createdAt               DateTime         @default(now())
+  updatedAt               DateTime         @updatedAt
+  business                Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  originStore             Store            @relation("RemittanceOrigin", fields: [originStoreId], references: [id], onDelete: Restrict)
+  destinationStore        Store            @relation("RemittanceDestination", fields: [destinationStoreId], references: [id], onDelete: Restrict)
+  sentShift               Shift?           @relation("RemittanceSentShift", fields: [sentShiftId], references: [id], onDelete: Restrict)
+  sentBy                  User?            @relation("RemittanceSentBy", fields: [sentById], references: [id], onDelete: Restrict)
+  paidShift               Shift?           @relation("RemittancePaidShift", fields: [paidShiftId], references: [id], onDelete: Restrict)
+  paidBy                  User?            @relation("RemittancePaidBy", fields: [paidById], references: [id], onDelete: Restrict)
+  fundingEntries          FundingEntry[]
+
+  @@unique([businessId, reference])
+  @@index([businessId, status, createdAt])
+  @@index([destinationStoreId, status])
+  @@index([sentShiftId])
+  @@index([paidShiftId])
+}
+
+model FundingEntry {
+  id            String           @id @default(uuid())
+  businessId    String
+  storeId       String
+  remittanceId  String?
+  type          FundingEntryType
+  amountCents   Int
+  description   String
+  createdById   String
+  createdAt     DateTime         @default(now())
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  store         Store            @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  remittance    Remittance?      @relation(fields: [remittanceId], references: [id], onDelete: Restrict)
+  createdBy     User             @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt])
+  @@index([storeId, createdAt])
+  @@index([remittanceId])
+}
+
+model Advance {
+  id            String               @id @default(uuid())
+  businessId    String
+  storeId       String
+  reference     String
+  status        AdvanceStatus        @default(AUTHORIZED)
+  recipientType AdvanceRecipientType
+  recipientName String
+  purpose       String
+  amountCents   Int
+  proofCents    Int                  @default(0)
+  returnedCents Int                  @default(0)
+  dueDate       DateTime
+  createdById   String
+  authorizedById String
+  authorizedAt  DateTime             @default(now())
+  issuedShiftId String?
+  issuedById    String?
+  issuedAt      DateTime?
+  settledAt     DateTime?
+  version       Int                  @default(0)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  business      Business             @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  store         Store                @relation(fields: [storeId], references: [id], onDelete: Restrict)
+  createdBy     User                 @relation("AdvanceCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  authorizedBy  User                 @relation("AdvanceAuthorizedBy", fields: [authorizedById], references: [id], onDelete: Restrict)
+  issuedShift   Shift?               @relation("AdvanceIssuedShift", fields: [issuedShiftId], references: [id], onDelete: Restrict)
+  issuedBy      User?                @relation("AdvanceIssuedBy", fields: [issuedById], references: [id], onDelete: Restrict)
+  settlements   AdvanceSettlement[]
+
+  @@unique([businessId, reference])
+  @@index([businessId, status, dueDate])
+  @@index([storeId, status])
+  @@index([issuedShiftId])
+}
+
+model AdvanceSettlement {
+  id          String                @id @default(uuid())
+  businessId  String
+  advanceId   String
+  type        AdvanceSettlementType
+  amountCents Int
+  description String
+  shiftId     String?
+  createdById String
+  createdAt   DateTime              @default(now())
+  business    Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  advance     Advance               @relation(fields: [advanceId], references: [id], onDelete: Restrict)
+  shift       Shift?                @relation(fields: [shiftId], references: [id], onDelete: Restrict)
+  createdBy   User                  @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([advanceId, createdAt])
+  @@index([shiftId])
+  @@index([businessId, type])
+}
+
+model AuditEvent {
+  id         String    @id @default(uuid())
+  businessId String
+  storeId    String?
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  store      Store?    @relation(fields: [storeId], references: [id], onDelete: SetNull)
+  actor      User      @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, createdAt])
+  @@index([entityType, entityId])
+}

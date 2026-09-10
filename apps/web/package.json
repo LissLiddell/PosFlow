@@ -1,0 +1,26 @@
+{
+  "name": "@posflow/web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5174 --configLoader runner",
+    "build": "vue-tsc -b && vite build --configLoader runner",
+    "typecheck": "vue-tsc -b",
+    "test": "vitest run --configLoader runner"
+  },
+  "dependencies": {
+    "@vitejs/plugin-vue": "^5.2.3",
+    "pinia": "^3.0.2",
+    "vue": "^3.5.13"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.4",
+    "vitest": "^3.2.7",
+    "vue-tsc": "^2.2.10"
+  }
+}
