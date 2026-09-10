@@ -1,0 +1,16 @@
+.git
+.github
+.env
+.env.*
+!.env.example
+!.env.docker.example
+node_modules
+**/node_modules
+**/dist
+.tmp
+coverage
+playwright-report
+test-results
+docs/demo/**/*.mp4
+*.log
+*.tsbuildinfo

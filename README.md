@@ -1,5 +1,7 @@
 # PosFlow
 
+[![CI](https://github.com/LissLiddell/PosFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/LissLiddell/PosFlow/actions/workflows/ci.yml)
+
 **A full-stack point-of-sale and cash-control system for multi-store operations.**
 
 PosFlow connects cash sales, drawer limits, sealed cash bundles, remittances,
@@ -173,6 +175,34 @@ configuration template.
 | `VITE_API_URL` | Browser-facing API base URL | `http://localhost:4100/api` |
 | `VITE_DEMO_PASSWORD` | Demo-only browser value matching `DEMO_USER_PASSWORD` | Set during the web build |
 
+## Docker
+
+The repository includes independent production images for the API and web app,
+plus a local Compose stack with PostgreSQL and an idempotent migration job.
+
+```powershell
+Copy-Item .env.docker.example .env.docker
+# Replace every placeholder in .env.docker before continuing.
+docker compose --env-file .env.docker up --build
+```
+
+The containerized web app is available at `http://localhost:8080`; the API
+health endpoint is `http://localhost:4100/api/health`. PostgreSQL is exposed on
+local port `5433` to avoid colliding with a regular installation on `5432`.
+
+Load fictional portfolio data once the migration job has completed:
+
+```powershell
+docker compose --env-file .env.docker run --rm migrate npm run db:seed
+docker compose --env-file .env.docker run --rm migrate npm run db:seed:stage2
+```
+
+Stop the services without deleting the database volume:
+
+```powershell
+docker compose --env-file .env.docker down
+```
+
 ## Quality checks
 
 ```powershell
@@ -185,6 +215,12 @@ npm run build
 The Playwright runner creates and cleans an isolated PostgreSQL schema named
 `posflow_e2e`; it does not modify the normal `public` demo schema. Failed browser
 journeys retain a screenshot, video, and trace for diagnosis.
+
+GitHub Actions repeats the TypeScript checks, unit/integration suite, production
+build, Playwright journeys, and both Docker image builds on every push to
+`main` and on every pull request. A failing stage blocks the green quality gate;
+the Render connection added during deployment will provide continuous delivery
+after this gate is in place.
 
 | Level | Passing checks | Signal |
 | --- | ---: | --- |

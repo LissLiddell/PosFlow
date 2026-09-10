@@ -4,6 +4,7 @@ node_modules
 dist
 .env
 .env.local
+.env.docker
 coverage
 playwright-report
 test-results

@@ -1,0 +1,46 @@
+# syntax=docker/dockerfile:1.7
+
+FROM node:20-bookworm-slim AS dependencies
+WORKDIR /workspace
+
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN npm ci
+
+FROM dependencies AS build
+COPY apps/api ./apps/api
+RUN npm run build --workspace @posflow/api
+
+# This target keeps Prisma CLI available for one-shot migration jobs.
+FROM build AS migration
+CMD ["npm", "run", "db:deploy", "--workspace", "@posflow/api"]
+
+FROM node:20-bookworm-slim AS production-dependencies
+WORKDIR /workspace
+
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/web/package.json apps/web/package.json
+RUN npm ci --omit=dev --workspace @posflow/api --include-workspace-root \
+    && npm cache clean --force
+
+FROM node:20-bookworm-slim AS runtime
+ENV NODE_ENV=production \
+    API_PORT=4100
+WORKDIR /workspace
+
+COPY --from=production-dependencies /workspace/node_modules ./node_modules
+COPY --from=build /workspace/node_modules/.prisma ./node_modules/.prisma
+COPY --from=build /workspace/node_modules/@prisma/client ./node_modules/@prisma/client
+COPY --chown=node:node package.json ./package.json
+COPY --chown=node:node apps/api/package.json ./apps/api/package.json
+COPY --chown=node:node apps/api/prisma ./apps/api/prisma
+COPY --chown=node:node --from=build /workspace/apps/api/dist ./apps/api/dist
+
+USER node
+EXPOSE 4100
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||process.env.API_PORT||4100)+'/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/api/dist/server.js"]

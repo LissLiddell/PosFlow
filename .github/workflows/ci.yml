@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Types, tests, E2E and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: posflow
+          POSTGRES_USER: posflow
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U posflow -d posflow"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://posflow@127.0.0.1:5432/posflow?schema=public
+      WEB_ORIGIN: http://127.0.0.1:5175
+      PLAYWRIGHT_BROWSERS_PATH: ${{ github.workspace }}/.tmp/ms-playwright
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare ephemeral test credentials
+        shell: bash
+        run: |
+          demo_password="$(openssl rand -hex 16)"
+          echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          echo "DEMO_USER_PASSWORD=$demo_password" >> "$GITHUB_ENV"
+          echo "VITE_DEMO_PASSWORD=$demo_password" >> "$GITHUB_ENV"
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Check TypeScript
+        run: npm run typecheck
+
+      - name: Run unit and integration tests
+        run: npm test
+
+      - name: Build applications
+        run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser journeys
+        run: npm run test:e2e
+
+  containers:
+    name: Build Docker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: quality
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build API image
+        run: docker build --file Dockerfile.api --tag posflow-api:ci .
+
+      - name: Build web image
+        shell: bash
+        run: |
+          docker build \
+            --file Dockerfile.web \
+            --build-arg VITE_API_URL=http://localhost:4100/api \
+            --build-arg VITE_DEMO_PASSWORD="$(openssl rand -hex 16)" \
+            --tag posflow-web:ci \
+            .

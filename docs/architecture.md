@@ -312,6 +312,8 @@ The application is ready to be deployed as three resources:
 2. a Node.js API service;
 3. a managed PostgreSQL database.
 
-Container packaging, continuous delivery, hosted secrets, health monitoring, and
-the public portfolio environment are the next delivery phase; they are not
-claimed as part of the current repository release.
+The repository packages the API and frontend as separate production containers,
+provides a PostgreSQL Compose stack for reproducible local execution, and runs a
+GitHub Actions quality gate on every push and pull request. Hosted secrets,
+health monitoring, and Render continuous delivery are completed when the public
+portfolio environment is provisioned.

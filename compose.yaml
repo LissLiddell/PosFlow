@@ -1,0 +1,67 @@
+name: posflow
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: posflow
+      POSTGRES_USER: posflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in your Docker env file}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U posflow -d posflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - posflow_postgres:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: migration
+    environment:
+      DATABASE_URL: postgresql://posflow:${POSTGRES_PASSWORD}@database:5432/posflow?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your Docker env file}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:?Set DEMO_USER_PASSWORD in your Docker env file}
+    depends_on:
+      database:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      target: runtime
+    environment:
+      DATABASE_URL: postgresql://posflow:${POSTGRES_PASSWORD}@database:5432/posflow?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in your Docker env file}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:?Set DEMO_USER_PASSWORD in your Docker env file}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      API_PORT: 4100
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "4100:4100"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4100/api}
+        VITE_DEMO_PASSWORD: ${DEMO_USER_PASSWORD:?Set DEMO_USER_PASSWORD in your Docker env file}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  posflow_postgres:
